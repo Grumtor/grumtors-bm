@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Loader2, Crown, Plus, Save, Trash2, User, ChevronLeft, ChevronRight, Heart, MessageCircle as MsgCircle, Send, Bookmark, MoreHorizontal, Home, Search as SearchIcon, PlusSquare, Film, Grid3X3, Check, Download, X, Image as ImageIcon, FolderDown, MessageCircle } from 'lucide-react'
+import { ArrowLeft, Loader2, Crown, Plus, Save, Trash2, User, ChevronLeft, ChevronRight, Heart, MessageCircle as MsgCircle, Send, Bookmark, MoreHorizontal, Home, Search as SearchIcon, PlusSquare, Film, Grid, Check, Download, X, Image as ImageIcon, FolderDown, MessageCircle } from 'lucide-react'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { LanguageToggle } from '@/components/language-toggle'
 import { useAuth, useLanguage } from '@/app/providers'
@@ -468,7 +468,7 @@ export default function BrandingPage() {
 
                 {/* Tabs */}
                 <div className="flex border-t border-[#262626] bg-black">
-                  <button className="flex-1 py-3 flex justify-center border-b border-white"><Grid3X3 className="w-6 h-6 text-white" /></button>
+                  <button className="flex-1 py-3 flex justify-center border-b border-white"><Grid className="w-6 h-6 text-white" /></button>
                   <button className="flex-1 py-3 flex justify-center"><Film className="w-6 h-6 text-gray-500" /></button>
                 </div>
 
