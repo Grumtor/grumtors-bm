@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Loader2, Search, Crown, Plus, Trash2, ExternalLink, X, Instagram, Filter, Tag, MessageCircle, MoreVertical, Settings, ChevronDown } from 'lucide-react'
@@ -44,7 +44,6 @@ export default function CollectionPage() {
 
   const [editingItemId, setEditingItemId] = useState<string | null>(null)
   const [tagMenuOpen, setTagMenuOpen] = useState<string | null>(null)
-  const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!isLoading && !user) router.push('/auth/login')
@@ -55,16 +54,6 @@ export default function CollectionPage() {
   }, [isLoading, user, router])
 
   useEffect(() => { if (user && (user.isPremium || user.isAdmin)) fetchData() }, [user])
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setTagMenuOpen(null)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
 
   const fetchData = async () => {
     if (!user) return
@@ -265,14 +254,14 @@ export default function CollectionPage() {
           </div>
         )}
 
-        <div className="card p-0 overflow-hidden">
+        <div className="card p-0 overflow-visible">
           <div className="px-4 py-3 border-b bg-secondary/30 flex items-center justify-between">
             <h2 className="font-semibold">{items.length} BM{items.length !== 1 ? 's' : ''}</h2>
           </div>
           {items.length > 0 ? (
-            <div className="divide-y">
+            <div className="divide-y divide-border">
               {items.map((item) => (
-                <div key={item.id} className="p-4 flex items-start gap-4 hover:bg-secondary/20 transition relative">
+                <div key={item.id} className="p-4 flex items-start gap-4 hover:bg-secondary/20 transition relative overflow-visible">
                   <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0">
                     <Instagram className="w-6 h-6 text-white" />
                   </div>
@@ -310,33 +299,9 @@ export default function CollectionPage() {
                   <div className="text-right text-xs text-muted-foreground">{formatRelativeTime(item.createdAt)}</div>
                   
                   {/* Tag Menu */}
-                  <div className="relative" ref={tagMenuOpen === item.id ? menuRef : null}>
-                    <button onClick={() => setTagMenuOpen(tagMenuOpen === item.id ? null : item.id)} className="btn btn-ghost p-2">
-                      <MoreVertical className="w-4 h-4" />
-                    </button>
-                    {tagMenuOpen === item.id && (
-                      <div className="absolute right-0 top-full mt-1 bg-card border rounded-lg shadow-xl py-2 min-w-[200px] z-30 animate-fade-in">
-                        <p className="px-3 py-1 text-xs text-muted-foreground font-medium">Add/Remove Tags</p>
-                        {categoryList.length > 0 ? categoryList.map(cat => (
-                          <div key={cat} className="px-3 py-2 border-t">
-                            <p className="text-xs font-medium text-muted-foreground mb-1">{cat}</p>
-                            <div className="flex flex-wrap gap-1">
-                              {filterCategories[cat]?.map(val => {
-                                const isActive = (item.tags?.[cat] || []).includes(val)
-                                return (
-                                  <button key={val} onClick={() => toggleTag(item, cat, val)} className={`px-2 py-0.5 rounded text-xs transition ${isActive ? 'bg-primary text-white' : 'bg-secondary hover:bg-secondary/80'}`}>
-                                    {val}
-                                  </button>
-                                )
-                              })}
-                            </div>
-                          </div>
-                        )) : (
-                          <p className="px-3 py-2 text-sm text-muted-foreground">No filter categories. Click "Filters" to create some.</p>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                  <button onClick={() => setTagMenuOpen(tagMenuOpen === item.id ? null : item.id)} className="btn btn-ghost p-2">
+                    <MoreVertical className="w-4 h-4" />
+                  </button>
                 </div>
               ))}
             </div>
@@ -348,6 +313,50 @@ export default function CollectionPage() {
           )}
         </div>
       </main>
+
+      {/* Tag Modal */}
+      {tagMenuOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setTagMenuOpen(null)}>
+          <div className="card max-w-md w-full animate-fade-in" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold">Add/Remove Tags</h3>
+              <button onClick={() => setTagMenuOpen(null)} className="btn btn-ghost p-2"><X className="w-5 h-5" /></button>
+            </div>
+            {(() => {
+              const item = items.find(i => i.id === tagMenuOpen)
+              if (!item) return null
+              return (
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">Tags for <strong>{item.instagramInput || `@${item.instagramUsername}`}</strong></p>
+                  {categoryList.length > 0 ? categoryList.map(cat => (
+                    <div key={cat} className="p-3 bg-secondary/50 rounded-lg">
+                      <p className="text-xs font-medium text-muted-foreground mb-2">{cat}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {filterCategories[cat]?.map(val => {
+                          const isActive = (item.tags?.[cat] || []).includes(val)
+                          return (
+                            <button key={val} onClick={() => toggleTag(item, cat, val)} className={`px-3 py-1.5 rounded-lg text-sm transition ${isActive ? 'bg-primary text-white' : 'bg-background border hover:bg-secondary'}`}>
+                              {val}
+                            </button>
+                          )
+                        })}
+                        {(!filterCategories[cat] || filterCategories[cat].length === 0) && (
+                          <span className="text-xs text-muted-foreground">No filters in this category</span>
+                        )}
+                      </div>
+                    </div>
+                  )) : (
+                    <p className="text-center text-muted-foreground py-4">No filter categories yet.<br/>Click "Filters" button to create some.</p>
+                  )}
+                </div>
+              )
+            })()}
+            <div className="mt-4 pt-4 border-t">
+              <button onClick={() => setTagMenuOpen(null)} className="btn btn-primary w-full">Done</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Filter Manager Modal */}
       {showFilterManager && (

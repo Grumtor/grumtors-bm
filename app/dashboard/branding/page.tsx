@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Loader2, Crown, Plus, Save, Trash2, User, ChevronLeft, ChevronRight, Heart, MessageCircle as MsgCircle, Send, Bookmark, MoreHorizontal, Home, Search as SearchIcon, PlusSquare, Film, Grid, Check, Download, X, Image as ImageIcon, FolderDown, MessageCircle } from 'lucide-react'
+import { ArrowLeft, Loader2, Crown, Plus, Save, Trash2, User, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Heart, MessageCircle as MsgCircle, Send, Bookmark, MoreHorizontal, Home, Search as SearchIcon, PlusSquare, Film, Grid, Check, Download, X, Image as ImageIcon, FolderDown, MessageCircle, Pencil } from 'lucide-react'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { LanguageToggle } from '@/components/language-toggle'
 import { useAuth, useLanguage } from '@/app/providers'
@@ -61,6 +61,8 @@ export default function BrandingPage() {
 
   const [selectedPostIndex, setSelectedPostIndex] = useState<number | null>(null)
   const [carouselIndex, setCarouselIndex] = useState(0)
+  const [editingPostIndex, setEditingPostIndex] = useState<number | null>(null)
+  const [editingHighlightIndex, setEditingHighlightIndex] = useState<number | null>(null)
 
   useEffect(() => {
     if (!isLoading && !user) router.push('/auth/login')
@@ -218,6 +220,60 @@ export default function BrandingPage() {
     setForm({ ...form, postsData: form.postsData.filter((_, i) => i !== index) })
   }
 
+  const movePost = (index: number, direction: 'up' | 'down') => {
+    const newPosts = [...form.postsData]
+    const newIndex = direction === 'up' ? index - 1 : index + 1
+    if (newIndex < 0 || newIndex >= newPosts.length) return
+    ;[newPosts[index], newPosts[newIndex]] = [newPosts[newIndex], newPosts[index]]
+    setForm({ ...form, postsData: newPosts })
+  }
+
+  const moveHighlight = (index: number, direction: 'up' | 'down') => {
+    const newHighlights = [...form.highlights]
+    const newIndex = direction === 'up' ? index - 1 : index + 1
+    if (newIndex < 0 || newIndex >= newHighlights.length) return
+    ;[newHighlights[index], newHighlights[newIndex]] = [newHighlights[newIndex], newHighlights[index]]
+    setForm({ ...form, highlights: newHighlights })
+  }
+
+  const removePostImage = (postIndex: number, imageIndex: number) => {
+    const newPosts = [...form.postsData]
+    newPosts[postIndex].images = newPosts[postIndex].images.filter((_, i) => i !== imageIndex)
+    if (newPosts[postIndex].images.length === 0) {
+      newPosts.splice(postIndex, 1)
+      setEditingPostIndex(null)
+    }
+    setForm({ ...form, postsData: newPosts })
+  }
+
+  const removeHighlightImage = (highlightIndex: number, imageIndex: number) => {
+    const newHighlights = [...form.highlights]
+    newHighlights[highlightIndex].images = newHighlights[highlightIndex].images.filter((_, i) => i !== imageIndex)
+    if (newHighlights[highlightIndex].images.length === 0) {
+      newHighlights.splice(highlightIndex, 1)
+      setEditingHighlightIndex(null)
+    }
+    setForm({ ...form, highlights: newHighlights })
+  }
+
+  const movePostImage = (postIndex: number, imageIndex: number, direction: 'left' | 'right') => {
+    const newPosts = [...form.postsData]
+    const images = newPosts[postIndex].images
+    const newImageIndex = direction === 'left' ? imageIndex - 1 : imageIndex + 1
+    if (newImageIndex < 0 || newImageIndex >= images.length) return
+    ;[images[imageIndex], images[newImageIndex]] = [images[newImageIndex], images[imageIndex]]
+    setForm({ ...form, postsData: newPosts })
+  }
+
+  const moveHighlightImage = (highlightIndex: number, imageIndex: number, direction: 'left' | 'right') => {
+    const newHighlights = [...form.highlights]
+    const images = newHighlights[highlightIndex].images
+    const newImageIndex = direction === 'left' ? imageIndex - 1 : imageIndex + 1
+    if (newImageIndex < 0 || newImageIndex >= images.length) return
+    ;[images[imageIndex], images[newImageIndex]] = [images[newImageIndex], images[imageIndex]]
+    setForm({ ...form, highlights: newHighlights })
+  }
+
   const downloadProfile = async () => {
     if (!previewRef.current) return
     setDownloading(true)
@@ -360,9 +416,14 @@ export default function BrandingPage() {
                   <div className="space-y-2">
                     {form.highlights.map((h, i) => (
                       <div key={i} className="flex items-center gap-2 p-2 bg-secondary/50 rounded">
+                        <div className="flex flex-col gap-0.5">
+                          <button onClick={() => moveHighlight(i, 'up')} disabled={i === 0} className="btn btn-ghost p-0.5 disabled:opacity-30"><ChevronUp className="w-3 h-3" /></button>
+                          <button onClick={() => moveHighlight(i, 'down')} disabled={i === form.highlights.length - 1} className="btn btn-ghost p-0.5 disabled:opacity-30"><ChevronDown className="w-3 h-3" /></button>
+                        </div>
                         <img src={h.images[0]} className="w-8 h-8 rounded-full object-cover" />
                         <input type="text" value={h.name} onChange={(e) => updateHighlightName(i, e.target.value)} className="input py-1 text-xs flex-1" />
                         <span className="text-xs text-muted-foreground">{h.images.length}</span>
+                        <button onClick={() => setEditingHighlightIndex(i)} className="btn btn-ghost p-1"><Pencil className="w-3 h-3" /></button>
                         <button onClick={() => triggerUpload('highlight', i, true)} className="btn btn-ghost p-1"><Plus className="w-3 h-3" /></button>
                         <button onClick={() => removeHighlight(i)} className="btn btn-ghost p-1 text-red-500"><Trash2 className="w-3 h-3" /></button>
                       </div>
@@ -374,15 +435,19 @@ export default function BrandingPage() {
               {form.postsData.length > 0 && (
                 <div className="mt-3 pt-3 border-t">
                   <p className="text-xs font-medium mb-2">Posts ({form.postsData.length})</p>
-                  <div className="grid grid-cols-4 gap-1">
+                  <div className="space-y-2">
                     {form.postsData.map((p, i) => (
-                      <div key={i} className="relative aspect-square rounded overflow-hidden group">
-                        <img src={p.images[0]} className="w-full h-full object-cover" />
-                        {p.images.length > 1 && <span className="absolute top-0.5 right-0.5 bg-black/60 text-white text-[8px] px-1 rounded">{p.images.length}</span>}
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-0.5 transition">
-                          <button onClick={() => triggerUpload('post', i, true)} className="p-1 text-white"><Plus className="w-3 h-3" /></button>
-                          <button onClick={() => removePost(i)} className="p-1 text-red-400"><Trash2 className="w-3 h-3" /></button>
+                      <div key={i} className="flex items-center gap-2 p-2 bg-secondary/50 rounded">
+                        <div className="flex flex-col gap-0.5">
+                          <button onClick={() => movePost(i, 'up')} disabled={i === 0} className="btn btn-ghost p-0.5 disabled:opacity-30"><ChevronUp className="w-3 h-3" /></button>
+                          <button onClick={() => movePost(i, 'down')} disabled={i === form.postsData.length - 1} className="btn btn-ghost p-0.5 disabled:opacity-30"><ChevronDown className="w-3 h-3" /></button>
                         </div>
+                        <img src={p.images[0]} className="w-10 h-10 rounded object-cover" />
+                        <span className="text-xs flex-1">Post {i + 1}</span>
+                        <span className="text-xs text-muted-foreground">{p.images.length} img{p.images.length > 1 ? 's' : ''}</span>
+                        <button onClick={() => setEditingPostIndex(i)} className="btn btn-ghost p-1"><Pencil className="w-3 h-3" /></button>
+                        <button onClick={() => triggerUpload('post', i, true)} className="btn btn-ghost p-1"><Plus className="w-3 h-3" /></button>
+                        <button onClick={() => removePost(i)} className="btn btn-ghost p-1 text-red-500"><Trash2 className="w-3 h-3" /></button>
                       </div>
                     ))}
                   </div>
@@ -536,6 +601,70 @@ export default function BrandingPage() {
             <div className="flex gap-3">
               <button onClick={() => { setShowNewProjectModal(false); setNewProjectName('') }} className="btn btn-secondary flex-1">Cancel</button>
               <button onClick={createProject} className="btn btn-primary flex-1" disabled={!newProjectName.trim()}>Create</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Post Modal */}
+      {editingPostIndex !== null && form.postsData[editingPostIndex] && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setEditingPostIndex(null)}>
+          <div className="card max-w-2xl w-full animate-fade-in max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Edit Post {editingPostIndex + 1}</h3>
+              <button onClick={() => setEditingPostIndex(null)} className="btn btn-ghost p-2"><X className="w-5 h-5" /></button>
+            </div>
+            <p className="text-sm text-muted-foreground mb-3">{form.postsData[editingPostIndex].images.length} image(s) - Drag to reorder</p>
+            <div className="grid grid-cols-3 gap-3">
+              {form.postsData[editingPostIndex].images.map((img, imgIndex) => (
+                <div key={imgIndex} className="relative aspect-square bg-secondary rounded-lg overflow-hidden group">
+                  <img src={img} className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition">
+                    <button onClick={() => movePostImage(editingPostIndex, imgIndex, 'left')} disabled={imgIndex === 0} className="btn btn-ghost p-1.5 text-white disabled:opacity-30"><ChevronLeft className="w-4 h-4" /></button>
+                    <button onClick={() => removePostImage(editingPostIndex, imgIndex)} className="btn btn-ghost p-1.5 text-red-400"><Trash2 className="w-4 h-4" /></button>
+                    <button onClick={() => movePostImage(editingPostIndex, imgIndex, 'right')} disabled={imgIndex === form.postsData[editingPostIndex].images.length - 1} className="btn btn-ghost p-1.5 text-white disabled:opacity-30"><ChevronRight className="w-4 h-4" /></button>
+                  </div>
+                  <span className="absolute top-1 left-1 bg-black/60 text-white text-xs px-1.5 rounded">{imgIndex + 1}</span>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 flex gap-3">
+              <button onClick={() => triggerUpload('post', editingPostIndex, true)} className="btn btn-secondary flex-1"><Plus className="w-4 h-4" /> Add Images</button>
+              <button onClick={() => setEditingPostIndex(null)} className="btn btn-primary flex-1">Done</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Highlight Modal */}
+      {editingHighlightIndex !== null && form.highlights[editingHighlightIndex] && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setEditingHighlightIndex(null)}>
+          <div className="card max-w-2xl w-full animate-fade-in max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Edit Highlight: {form.highlights[editingHighlightIndex].name}</h3>
+              <button onClick={() => setEditingHighlightIndex(null)} className="btn btn-ghost p-2"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="mb-4">
+              <label className="text-sm text-muted-foreground">Name</label>
+              <input type="text" value={form.highlights[editingHighlightIndex].name} onChange={(e) => updateHighlightName(editingHighlightIndex, e.target.value)} className="input w-full mt-1" />
+            </div>
+            <p className="text-sm text-muted-foreground mb-3">{form.highlights[editingHighlightIndex].images.length} image(s)</p>
+            <div className="grid grid-cols-4 gap-3">
+              {form.highlights[editingHighlightIndex].images.map((img, imgIndex) => (
+                <div key={imgIndex} className="relative aspect-square bg-secondary rounded-lg overflow-hidden group">
+                  <img src={img} className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1 transition">
+                    <button onClick={() => moveHighlightImage(editingHighlightIndex, imgIndex, 'left')} disabled={imgIndex === 0} className="btn btn-ghost p-1 text-white disabled:opacity-30"><ChevronLeft className="w-3 h-3" /></button>
+                    <button onClick={() => removeHighlightImage(editingHighlightIndex, imgIndex)} className="btn btn-ghost p-1 text-red-400"><Trash2 className="w-3 h-3" /></button>
+                    <button onClick={() => moveHighlightImage(editingHighlightIndex, imgIndex, 'right')} disabled={imgIndex === form.highlights[editingHighlightIndex].images.length - 1} className="btn btn-ghost p-1 text-white disabled:opacity-30"><ChevronRight className="w-3 h-3" /></button>
+                  </div>
+                  <span className="absolute top-1 left-1 bg-black/60 text-white text-xs px-1 rounded">{imgIndex + 1}</span>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 flex gap-3">
+              <button onClick={() => triggerUpload('highlight', editingHighlightIndex, true)} className="btn btn-secondary flex-1"><Plus className="w-4 h-4" /> Add Images</button>
+              <button onClick={() => setEditingHighlightIndex(null)} className="btn btn-primary flex-1">Done</button>
             </div>
           </div>
         </div>
