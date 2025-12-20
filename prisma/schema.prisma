@@ -1,0 +1,161 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  token        String   @unique
+  passwordHash String
+  username     String   @unique
+  telegram     String?
+  credits      Int      @default(10)
+  isUnlimited  Boolean  @default(false)
+  isPremium    Boolean  @default(false)
+  isAdmin      Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  requests     BMRequest[]
+  transactions Transaction[]
+  brandings    Branding[]
+  personalBMs  PersonalBM[]
+  userSettings UserSettings?
+}
+
+model BMRequest {
+  id                String        @id @default(cuid())
+  userId            String
+  instagramInput    String
+  instagramUsername String
+  status            RequestStatus @default(PENDING)
+  reviewedAt        DateTime?
+  reviewedBy        String?
+  businessManagerId String?
+  adminNote         String?
+  creditsCharged    Int?
+  creditsPending    Boolean       @default(false)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  user            User             @relation(fields: [userId], references: [id])
+  businessManager BusinessManager? @relation(fields: [businessManagerId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@index([instagramUsername])
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model BusinessManager {
+  id                String   @id @default(cuid())
+  instagramUsername String   @unique
+  instagramInput    String?
+  bmLink            String?
+  bmId              String?
+  bmName            String?
+  notes             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  createdBy         String?
+
+  requests BMRequest[]
+
+  @@index([instagramUsername])
+}
+
+model Transaction {
+  id           String          @id @default(cuid())
+  userId       String
+  type         TransactionType
+  amount       Int
+  description  String?
+  balanceAfter Int
+  requestId    String?
+  createdAt    DateTime        @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+enum TransactionType {
+  SIGNUP_BONUS
+  SEARCH_DEBIT
+  PURCHASE
+  ADMIN_CREDIT
+  ADMIN_DEBIT
+  REFUND
+}
+
+model Branding {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  username    String?
+  displayName String?
+  bio         String?
+  website     String?
+  profilePic  String?
+  followers   String?
+  following   String?
+  posts       String?
+  isVerified  Boolean  @default(false)
+  highlights  Json?
+  reels       Json?
+  postsData   Json?
+  stories     Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model PersonalBM {
+  id                String   @id @default(cuid())
+  userId            String
+  instagramUsername String
+  instagramInput    String?
+  bmLink            String?
+  bmId              String?
+  bmName            String?
+  notes             String?
+  tags              Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, instagramUsername])
+  @@index([userId])
+}
+
+model UserSettings {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  filterCategories Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Settings {
+  id                  String  @id @default("global")
+  creditsPerSearch    Int     @default(10)
+  failedSearchCredits Int     @default(2)
+  signupBonus         Int     @default(10)
+  maintenanceMode     Boolean @default(false)
+  telegramContact     String  @default("@Grumtor")
+}
