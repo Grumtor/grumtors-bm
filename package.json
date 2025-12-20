@@ -18,7 +18,7 @@
     "bcryptjs": "^2.4.3",
     "html2canvas": "^1.4.1",
     "jszip": "^3.10.1",
-    "lucide-react": "^0.312.0",
+    "lucide-react": "^0.263.1",
     "next": "14.1.0",
     "next-themes": "^0.2.1",
     "react": "^18",
